@@ -23,12 +23,44 @@ def bakeries():
     bakeries = [bakery.to_dict() for bakery in Bakery.query.all()]
     return make_response(  bakeries,   200  )
 
-@app.route('/bakeries/<int:id>')
+@app.route('/bakeries/<int:id>', methods=['PATCH'])
 def bakery_by_id(id):
 
     bakery = Bakery.query.filter_by(id=id).first()
-    bakery_serialized = bakery.to_dict()
-    return make_response ( bakery_serialized, 200  )
+
+    if not bakery:
+        return make_response({"error": "Bakery not found"}, 404)
+    
+    if request.method == 'PATCH':
+        name = request.form.get("name")
+        if name:
+            bakery.name = name
+            db.session.commit()
+        return make_response(bakery.to_dict(), 200)
+    
+    
+        
+@app.route('/baked_goods', methods=['POST'])
+def baked_goods():
+
+    if request.method == 'POST':
+        new_baked_goods = BakedGood(
+            name=request.form.get("name"),
+            price=request.form.get("price"),
+            bakery_id=request.form.get("bakery_id"),
+        )
+
+        db.session.add(new_baked_goods)
+        db.session.commit()
+
+        baked_goods_dict = new_baked_goods.to_dict()
+
+        response = make_response(
+            baked_goods_dict,
+            201
+        )
+
+        return response
 
 @app.route('/baked_goods/by_price')
 def baked_goods_by_price():
@@ -44,6 +76,24 @@ def most_expensive_baked_good():
     most_expensive = BakedGood.query.order_by(BakedGood.price.desc()).limit(1).first()
     most_expensive_serialized = most_expensive.to_dict()
     return make_response( most_expensive_serialized,   200  )
+
+
+@app.route('/baked_goods/<int:id>', methods=['DELETE'])
+def delete_baked_goods(id):
+    baked_good = BakedGood.query.filter_by(id=id).first()
+
+    if not baked_good:
+        return make_response({"error": "BakedGood not found"}, 404)
+    
+    db.session.delete(baked_good)
+    db.session.commit()
+
+    response = {
+        "delete_successful": True,
+        "message": "Baked good deleted."
+    }
+
+    return make_response(response, 200)
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
